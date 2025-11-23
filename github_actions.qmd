@@ -1,0 +1,455 @@
+---
+title: "GitHub Actions: Automatización de Workflows para Ciencia de Datos y MLOps"
+subtitle: "Tutorial para en_coders"
+author: "en_coders Podcast"
+date: today
+format:
+  html:
+    theme: darkly
+    toc: true
+    toc-depth: 3
+    code-fold: false
+    code-line-numbers: true
+---
+
+# Introducción a GitHub Actions
+
+GitHub Actions es una plataforma de automatización integrada en GitHub que te permite automatizar workflows directamente en tu repositorio. Es perfecta para ciencia de datos y MLOps porque puedes:
+
+- Ejecutar tests automáticamente cuando haces push
+- Entrenar modelos en horarios específicos
+- Validar datos antes de mergear a producción
+- Generar reportes y documentación automáticamente
+- Desplegar modelos a producción sin intervención manual
+
+## ¿Por qué es importante en MLOps?
+
+En ciencia de datos, la calidad es crítica. GitHub Actions te ayuda a mantener estándares sin que tengas que acordarte de ejecutar scripts manualmente.
+
+---
+
+# Conceptos Básicos
+
+## ¿Qué es un Workflow?
+
+Un **workflow** es un proceso automatizado que se ejecuta en respuesta a eventos en tu repositorio. Es como una receta que le dices a GitHub: "cuando esto suceda, ejecuta esto otro".
+
+## Componentes principales
+
+### Event (Evento)
+El disparador que inicia todo. Ejemplos:
+- `push` - Alguien hace push a una rama
+- `pull_request` - Alguien abre un PR
+- `schedule` - A una hora específica (como un cron job)
+- `workflow_dispatch` - Ejecutar manualmente desde la UI
+
+### Job (Trabajo)
+Un conjunto de pasos que se ejecutan en la misma máquina. Puedes tener múltiples jobs en paralelo.
+
+### Step (Paso)
+Comandos o acciones individuales dentro de un job. Pueden ser:
+- Comandos shell (`run`)
+- Acciones predefinidas (`uses`)
+
+### Action (Acción)
+Componentes reutilizables que hacen tareas comunes. Por ejemplo, descargar el código, configurar Python, etc.
+
+---
+
+# Tu Primer Workflow
+
+## Estructura de archivos
+
+Los workflows viven en `.github/workflows/` en la raíz de tu repositorio. Deben ser archivos YAML.
+
+```
+mi-repo/
+├── .github/
+│   └── workflows/
+│       └── mi-primer-workflow.yml
+├── src/
+│   └── main.py
+└── README.md
+```
+
+## Hola Mundo en GitHub Actions
+
+Aquí está el workflow más simple posible:
+
+```yaml
+name: Hola Mundo
+
+on: push
+
+jobs:
+  saludo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Imprimir saludo
+        run: echo "¡Hola desde GitHub Actions!"
+```
+
+**Explicación línea por línea:**
+
+- `name`: El nombre que verás en la UI de GitHub
+- `on: push`: El evento que dispara este workflow (cuando alguien hace push)
+- `jobs`: Contenedor para todos los trabajos
+- `saludo`: El nombre de nuestro job
+- `runs-on: ubuntu-latest`: La máquina donde se ejecuta (hay opciones: ubuntu, windows, macos)
+- `steps`: Lista de pasos a ejecutar
+- `name`: Descripción del paso (opcional pero recomendado)
+- `run`: Comando shell a ejecutar
+
+---
+
+# Workflows Prácticos para Ciencia de Datos
+
+## 1. Testing automático con pytest
+
+Este workflow ejecuta tests cada vez que alguien hace push:
+
+```yaml
+name: Tests con pytest
+
+on: 
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        python-version: [3.9, "3.10", "3.11"]
+    
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+      
+      - name: Configurar Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
+          pip install -r requirements.txt
+      
+      - name: Ejecutar tests
+        run: pytest --cov=src tests/
+      
+      - name: Subir cobertura a Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+```
+
+**Novedad: `strategy.matrix`**
+
+Con `matrix`, ejecutamos los tests en Python 3.9, 3.10 y 3.11 simultáneamente. Es como tener 3 jobs en paralelo. La variable `${{ matrix.python-version }}` toma cada valor de la lista.
+
+**`uses` vs `run`:**
+- `uses`: Acciones predefinidas (no tienes que escribir el código)
+- `run`: Comandos shell personalizados
+
+## 2. Validación de datos antes de mergear
+
+Imagina que tienes un dataset crítico. Quieres validar su integridad:
+
+```yaml
+name: Validar datos
+
+on: pull_request
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Clonar código
+        uses: actions/checkout@v4
+      
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      
+      - name: Instalar dependencias
+        run: |
+          pip install pandas great-expectations pydantic
+          pip install -r requirements.txt
+      
+      - name: Validar esquema de datos
+        run: python scripts/validar_datos.py
+      
+      - name: Verificar datos faltantes
+        run: |
+          python -c "
+          import pandas as pd
+          df = pd.read_csv('data/input.csv')
+          if df.isnull().sum().sum() > 0:
+              print('⚠️  Datos faltantes detectados')
+              exit(1)
+          print('✓ Validación exitosa')
+          "
+```
+
+Si la validación falla, el PR no puede mergearse (si lo configuras como branch protection rule).
+
+## 3. Entrenar modelo en horario específico
+
+Con `schedule`, puedes entrenar automáticamente cada noche:
+
+```yaml
+name: Entrenar modelo nocturnamente
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 2 AM UTC todos los días
+  workflow_dispatch:  # También permite ejecución manual
+
+jobs:
+  entrenar:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+      
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      
+      - name: Instalar dependencias
+        run: |
+          pip install scikit-learn pandas numpy
+          pip install -r requirements.txt
+      
+      - name: Ejecutar entrenamiento
+        run: python scripts/train_model.py
+      
+      - name: Guardar modelo
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add models/
+          git commit -m "🤖 Modelo entrenado automáticamente"
+          git push
+```
+
+**Nota sobre `cron`:** Usa formato UTC. `0 2 * * *` significa 2 AM todos los días.
+
+---
+
+# Nivel Intermedio
+
+## Variables de Entorno y Secretos
+
+### Secretos (para API keys, tokens, etc.)
+
+Nunca hardcodees credenciales. Usa secretos:
+
+1. Ve a: Settings → Secrets and variables → Actions
+2. Crea un secreto llamado `HUGGING_FACE_TOKEN`
+3. Úsalo en tu workflow:
+
+```yaml
+name: Usar secretos
+
+on: push
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+      
+      - name: Desplegar modelo a Hugging Face
+        env:
+          HF_TOKEN: ${{ secrets.HUGGING_FACE_TOKEN }}
+        run: |
+          pip install huggingface-hub
+          python scripts/upload_model.py
+```
+
+El secreto nunca se imprime en los logs (GitHub lo oculta automáticamente).
+
+### Variables de Entorno (información no sensible)
+
+```yaml
+env:
+  PYTHON_VERSION: "3.11"
+  DATA_PATH: "./data/processed"
+
+jobs:
+  procesar:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Usando Python ${{ env.PYTHON_VERSION }}"
+```
+
+## Condicionales
+
+Ejecutar pasos solo bajo ciertas condiciones:
+
+```yaml
+name: Despliegue condicional
+
+on: push
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Ejecutar en rama main
+        if: github.ref == 'refs/heads/main'
+        run: echo "Esto solo corre en main"
+      
+      - name: Ejecutar si el commit tiene tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: echo "Versión liberada detectada"
+      
+      - name: Ejecutar si el commit menciona 'deploy'
+        if: contains(github.event.head_commit.message, 'deploy')
+        run: echo "Desplegando..."
+```
+
+## Reutilizar Workflows (Composite Actions)
+
+Imagina que tienes pasos que repites en muchos workflows. Crea una acción reutilizable:
+
+**`.github/actions/setup-data-env/action.yml`:**
+
+```yaml
+name: 'Setup Data Environment'
+description: 'Configura Python y dependencias comunes'
+
+inputs:
+  python-version:
+    description: 'Versión de Python'
+    default: '3.11'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ inputs.python-version }}
+    
+    - name: Instalar dependencias
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install pandas numpy scikit-learn
+```
+
+**Luego úsalo así:**
+
+```yaml
+name: Mi workflow
+
+on: push
+
+jobs:
+  analisis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup ambiente de datos
+        uses: ./.github/actions/setup-data-env
+        with:
+          python-version: "3.11"
+      
+      - name: Ejecutar análisis
+        run: python scripts/analyze.py
+```
+
+## Artifacts: Guardar y compartir archivos
+
+Entrena un modelo y quieres guardarlo:
+
+```yaml
+name: Entrenar y guardar artefacto
+
+on: push
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      
+      - name: Entrenar modelo
+        run: python scripts/train.py
+      
+      - name: Subir modelo como artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: trained-model
+          path: models/model.pkl
+          retention-days: 30
+```
+
+Los artefactos se pueden descargar desde la UI de GitHub Actions durante 30 días.
+
+## Status Badges
+
+Muestra el estado de tu workflow en el README:
+
+```markdown
+![Tests](https://github.com/tu-usuario/tu-repo/actions/workflows/tests.yml/badge.svg)
+```
+
+Reemplaza `tu-usuario/tu-repo` y `tests.yml` con los tuyos.
+
+---
+
+# Troubleshooting Común
+
+| Problema | Causa | Solución |
+|----------|-------|----------|
+| "Command not found" | Dependencia no instalada | Agrega `pip install package` antes de usar |
+| Logs cortados | Demasiada salida | Usa `tee` para guardar a archivo |
+| Secrets no funciona | Typo en nombre | Verifica que coincida exactamente con Settings |
+| Timeout | Proceso toma mucho | Usa `timeout-minutes` en el job |
+| "Permission denied" | Falta de permisos git | Configura `git config user.email/name` |
+
+---
+
+# Próximos Pasos
+
+1. **Explorar el Marketplace**: https://github.com/marketplace?type=actions
+2. **Monitoreo**: Usa acciones para enviar notificaciones a Slack cuando fallen tests
+3. **Docker**: Crea containers para entornos reproducibles
+4. **Database**: Usa servicios como PostgreSQL dentro de tus workflows
+5. **Self-hosted runners**: Para jobs que consumen muchos recursos
+
+---
+
+# Recursos
+
+- [Documentación oficial GitHub Actions](https://docs.github.com/actions)
+- [Awesome Actions](https://github.com/sdras/awesome-actions) - Colección de acciones útiles
+- [Syntax YAML Guide](https://learnxinyminutes.com/docs/yaml/)
+
+---
+
+*Espero que disfrutes automatizando tus flujos de MLOps. ¡Nos escuchamos en en_coders!*
