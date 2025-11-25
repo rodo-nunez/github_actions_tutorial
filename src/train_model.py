@@ -12,7 +12,10 @@ from pathlib import Path
 
 def cargar_datos():
     """Carga el dataset de penguins desde seaborn."""
-    df = sns.load_dataset('penguins')
+    try:
+        df = pd.read_csv("data/penguins.csv")
+    except FileNotFoundError:
+        df = sns.load_dataset('penguins')
     df = df.dropna()  # Eliminar valores faltantes
     return df
 
