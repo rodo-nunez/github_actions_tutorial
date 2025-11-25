@@ -1,2 +1,22 @@
-*.html
+# Carpetas ---------------------------------------- 
+
 github_actions_files
+data
+
+# Outputs ---------------------------------------- 
+
+*.html
+*.pkl
+
+# Pytest y coverage ---------------------------------------- 
+
+.coverage
+coverage.xml
+htmlcov/
+coverage/
+
+# Cache ---------------------------------------- 
+
+.pyc 
+__pycache__
+.pytest_cache
