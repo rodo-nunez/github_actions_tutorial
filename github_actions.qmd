@@ -38,6 +38,7 @@ Un **workflow** es un proceso automatizado que se ejecuta en respuesta a eventos
 
 ### Event (Evento)
 El disparador que inicia todo. Ejemplos:
+
 - `push` - Alguien hace push a una rama
 - `pull_request` - Alguien abre un PR
 - `schedule` - A una hora específica (como un cron job)
@@ -48,6 +49,7 @@ Un conjunto de pasos que se ejecutan en la misma máquina. Puedes tener múltipl
 
 ### Step (Paso)
 Comandos o acciones individuales dentro de un job. Pueden ser:
+
 - Comandos shell (`run`)
 - Acciones predefinidas (`uses`)
 
@@ -154,6 +156,7 @@ jobs:
 Con `matrix`, ejecutamos los tests en Python 3.9, 3.10 y 3.11 simultáneamente. Es como tener 3 jobs en paralelo. La variable `${{ matrix.python-version }}` toma cada valor de la lista.
 
 **`uses` vs `run`:**
+
 - `uses`: Acciones predefinidas (no tienes que escribir el código)
 - `run`: Comandos shell personalizados
 
