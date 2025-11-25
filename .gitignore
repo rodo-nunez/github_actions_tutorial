@@ -7,3 +7,15 @@ data
 
 *.html
 *.pkl
+
+# Pytest y coverage ---------------------------------------- 
+
+.coverage
+coverage.xml
+htmlcov/
+coverage/
+
+# Cache ---------------------------------------- 
+
+.pyc 
+__pycache__
