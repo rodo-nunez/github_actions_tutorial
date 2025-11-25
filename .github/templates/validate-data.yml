@@ -1,0 +1,43 @@
+name: Validar datos
+
+on: 
+  pull_request:
+    branches: [main]
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Clonar código
+        uses: actions/checkout@v4
+      
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      
+      - name: Instalar uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      
+      - name: Instalar dependencias con uv
+        run: |
+          uv pip install --system pandas seaborn
+      
+      - name: Validar esquema de datos
+        run: python scripts/validar_datos.py
+      
+      - name: Verificar datos faltantes
+        run: |
+          python -c "
+          import pandas as pd
+          import seaborn as sns
+          df = sns.load_dataset('penguins')
+          nulos_totales = df.isnull().sum().sum()
+          if nulos_totales > 20:
+              print(f'⚠️  Demasiados datos faltantes detectados: {nulos_totales}')
+              exit(1)
+          print(f'✓ Validación exitosa: {nulos_totales} valores nulos (aceptable)')
+          "
