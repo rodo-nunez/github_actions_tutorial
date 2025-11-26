@@ -1,0 +1,50 @@
+name: Entrenar modelo nocturnamente
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 2 AM UTC todos los días
+  workflow_dispatch:  # También permite ejecución manual
+
+jobs:
+  entrenar:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+      
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      
+      - name: Instalar uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      
+      - name: Instalar dependencias con uv
+        run: |
+          uv pip install --system -r pyproject.toml
+      
+      - name: Ejecutar entrenamiento
+        run: python scripts/train.py
+      
+      - name: Subir modelo como artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trained-model
+          path: models/*.pkl
+          retention-days: 30
+      
+      - name: Guardar modelo en repositorio
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add models/
+          if git diff --staged --quiet; then
+            echo "No hay cambios en el modelo"
+          else
+            git commit -m "🤖 Modelo entrenado automáticamente $(date +'%Y-%m-%d %H:%M')"
+            git push
+          fi

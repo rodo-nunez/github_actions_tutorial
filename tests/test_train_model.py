@@ -2,13 +2,11 @@
 Tests para el módulo de entrenamiento del modelo.
 """
 from src.train_model import cargar_datos, preparar_datos, entrenar_modelo
-import pytest
 import pandas as pd
 import sys
-from pathlib import Path
 
 # Agregar src al path
-sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
+sys.path.insert(0, 'src')
 
 
 def test_cargar_datos():

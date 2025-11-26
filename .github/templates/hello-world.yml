@@ -1,0 +1,16 @@
+name: Hola Mundo
+
+on: push
+
+jobs:
+  saludo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Imprimir saludo
+        run: echo "¡Hola desde GitHub Actions! 🚀"
+      
+      - name: Mostrar información del evento
+        run: |
+          echo "Rama: ${{ github.ref }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Evento: ${{ github.event_name }}"
