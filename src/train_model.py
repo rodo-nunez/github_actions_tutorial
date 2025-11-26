@@ -50,7 +50,7 @@ def evaluar_modelo(modelo, X_test, y_test):
 
     print(f"\n🎯 Accuracy: {accuracy:.3f}")
     print("\n📊 Classification Report:")
-    print(classification_report(y_test, y_pred))dfsgsdfgdsfgdfsgfdsgsdfgdsfg
+    print(classification_report(y_test, y_pred))
 
     return accuracy
 
